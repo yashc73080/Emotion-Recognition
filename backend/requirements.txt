@@ -1,0 +1,4 @@
+# Python: 3.10.16
+numpy==2.2.1
+torch==2.5.1
+torchvision==0.20.1
