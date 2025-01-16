@@ -4,6 +4,9 @@ from torch.utils.data import DataLoader
 
 def prepare_data(data_dir, batch_size=32):
     transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
         transforms.Resize((48, 48)),
         transforms.ToTensor(),
         transforms.Normalize((0.5,), (0.5,))
@@ -12,8 +15,8 @@ def prepare_data(data_dir, batch_size=32):
     train_data = datasets.ImageFolder(os.path.join(data_dir, 'train'), transform=transform)
     test_data = datasets.ImageFolder(os.path.join(data_dir, 'test'), transform=transform)
 
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, pin_memory=True)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False, pin_memory=True)
 
     return train_loader, test_loader
 
