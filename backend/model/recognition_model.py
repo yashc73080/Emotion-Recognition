@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 from torch.autograd import Variable
-from tqdm import tqdm
 import time
 
 sys.path.append(os.path.abspath(os.path.join('..')))
@@ -76,7 +75,7 @@ class EmotionRecognitionCNN(nn.Module):
 
                 if batch_idx % 100 == 0:
                     batch_size = len(X_train)
-                    print(f'Epoch: {epoch+1} [{batch_idx*batch_size}/{len(train_loader.dataset)} ({100.*batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tAccuracy: {100. * correct / (batch_size * (batch_idx+1)):.2f}%')
+                    print(f'Epoch: {epoch+1} [{batch_idx*batch_size}/{len(train_loader.dataset)} ({100.*batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tAccuracy: {100. * correct / (batch_size * (batch_idx+1)):.2f}%', flush=True)
             
             # Step the scheduler
             scheduler.step()
@@ -92,31 +91,31 @@ class EmotionRecognitionCNN(nn.Module):
                 predicted = torch.max(output, 1)[1]
                 correct += (predicted == test_labels).sum().item()
         
-        print(f'Test accuracy: {100. * correct / len(test_loader.dataset):.2f}%')
+        print(f'Test accuracy: {100. * correct / len(test_loader.dataset):.2f}%', flush=True)
 
 
 def main():
     start_time = time.time()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'Using device: {device}')
+    print(f'Using device: {device}', flush=True)
 
     data_dir = os.path.join('..', '..', 'dataset')
     batch_size = 32
     train_loader, test_loader = prepare_data(data_dir, batch_size=batch_size)
 
-    print('Number of training images:', len(train_loader.dataset))
-    print('Number of test images:', len(test_loader.dataset))
+    print('Number of training images:', len(train_loader.dataset), flush=True)
+    print('Number of test images:', len(test_loader.dataset), flush=True)
 
     model = EmotionRecognitionCNN().to(device)
     model.train_model(train_loader, lr=0.001, num_epochs=15, device=device)
-    print('Train time:', time.time() - start_time)
+    print('Train time:', time.time() - start_time, flush=True)
 
     model.test_model(test_loader, device=device)
 
     torch.save(model.state_dict(), "emotion_recognition_cnn.pth")
 
-    print('Total Execution time:', time.time() - start_time)
+    print('Total Execution time:', time.time() - start_time, flush=True)
 
 
 if __name__ == '__main__':

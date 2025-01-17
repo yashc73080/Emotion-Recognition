@@ -40,6 +40,7 @@ set -x
 
 cd $HOME/Emotion-Recognition/backend/model/
 
+conda init bash
 eval "$(conda shell.bash hook)"
 conda activate emotion
 
