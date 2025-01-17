@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
 from torch.autograd import Variable
+from tqdm import tqdm
 import time
 
 sys.path.append(os.path.abspath(os.path.join('..')))
@@ -19,9 +20,17 @@ class EmotionRecognitionCNN(nn.Module):
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
         self.conv3 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+
+        # Batch Normalization layers
+        self.bn1 = nn.BatchNorm2d(32)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.bn3 = nn.BatchNorm2d(128)
         
         # Pooling layer
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+
+        # Dropout layer
+        self.dropout = nn.Dropout(0.2)
         
         # Fully connected layers
         self.fc1 = nn.Linear(128 * 6 * 6, 512)
@@ -29,25 +38,27 @@ class EmotionRecognitionCNN(nn.Module):
         self.fc3 = nn.Linear(256, 7)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
+        x = self.pool(F.relu(self.bn1(self.conv1(x))))
+        x = self.pool(F.relu(self.bn2(self.conv2(x))))
+        x = self.pool(F.relu(self.bn3(self.conv3(x))))
 
         x = x.view(-1, 128 * 6 * 6)
 
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = self.dropout(F.relu(self.fc1(x)))
+        x = self.dropout(F.relu(self.fc2(x)))
         x = self.fc3(x)
 
         return x
     
     def train_model(self, train_loader, lr=0.001, num_epochs=5, device='cpu'):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=2, gamma=0.5)
         error = nn.CrossEntropyLoss()
         self.train()
 
         for epoch in range(num_epochs):
             correct = 0
+            total_loss = 0
 
             for batch_idx, (X_train, y_train) in enumerate(train_loader):
                 X_train, y_train = X_train.to(device), y_train.to(device)
@@ -58,14 +69,17 @@ class EmotionRecognitionCNN(nn.Module):
                 loss.backward()
                 optimizer.step()
 
-                # Total correct predictions
+                # Update running loss and accuracy
+                total_loss += loss.item()
                 predicted = torch.max(output.data, 1)[1]
                 correct += (predicted == y_train).sum().item()
-                
-                if batch_idx % 50 == 0:
+
+                if batch_idx % 100 == 0:
                     batch_size = len(X_train)
                     print(f'Epoch: {epoch+1} [{batch_idx*batch_size}/{len(train_loader.dataset)} ({100.*batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tAccuracy: {100. * correct / (batch_size * (batch_idx+1)):.2f}%')
-
+            
+            # Step the scheduler
+            scheduler.step()
 
     def test_model(self, test_loader, device='cpu'):
         self.eval()
@@ -95,7 +109,7 @@ def main():
     print('Number of test images:', len(test_loader.dataset))
 
     model = EmotionRecognitionCNN().to(device)
-    model.train_model(train_loader, lr=0.0001, num_epochs=5, device=device)
+    model.train_model(train_loader, lr=0.001, num_epochs=15, device=device)
     print('Train time:', time.time() - start_time)
 
     model.test_model(test_loader, device=device)
