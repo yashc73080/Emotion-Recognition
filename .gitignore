@@ -1,3 +1,9 @@
 dataset/
 __pycache__/
 *.ipynb
+*.zip
+temp_dir/
+*.tar
+*.out
+*.e
+*.o
