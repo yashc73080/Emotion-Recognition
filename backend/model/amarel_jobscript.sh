@@ -7,6 +7,7 @@ export JOB_NAME=train_CNN_"$LABEL"_"$DATE"
 
 # Environment variables to optimize performance
 export OMP_NUM_THREADS=4 
+export OMP_NUM_THREADS=4 
 export MKL_NUM_THREADS=1 
 export NUMEXPR_NUM_THREADS=1 
 export OPENBLAS_NUM_THREADS=1
@@ -48,6 +49,9 @@ EOT
 
 # Submit job:
 # sbatch amarel_jobscript.sh
+
+# See logs:
+# cd /scratch/$USER/logs/emotion_recognition
 
 # See logs:
 # cd /scratch/$USER/logs/emotion_recognition
