@@ -19,7 +19,7 @@ transform = transforms.Compose([
 
 img_dir = os.path.join("..", "..", "single_images")
 img_path = os.path.join(img_dir, "test1.jpg")
-img = Image.open(img_path).convert("RGB")
+img = Image.open(img_path)
 img_tensor = transform(img).unsqueeze(0).to(device)
 
 # Classes

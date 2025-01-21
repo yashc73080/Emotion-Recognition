@@ -26,8 +26,8 @@ sbatch <<EOT
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
+#SBATCH --cpus-per-task=4
 #SBATCH --time=08:00:00
 #SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
 #SBATCH --mail-type=ALL
@@ -38,9 +38,12 @@ module load cuda/11.7
 
 set -x
 
-cd $HOME/Emotion-Recognition
+cd $HOME/Emotion-Recognition/backend/model/
 
-srun python recognition_model.py --batch_size=32 --lr=0.0001 --epochs=10 --data_dir=/scratch/${USER}/Emotion-Recognition/dataset
+eval "$(conda shell.bash hook)"
+conda activate emotion
+
+python recognition_model.py --batch_size=32 --lr=0.0001 --epochs=10 --data_dir=/scratch/${USER}/Emotion-Recognition/dataset
 EOT
 
 # Submit job:
