@@ -1,7 +1,7 @@
 'use client';
 
-import CameraFeed from '../components/CameraFeed';
+import WebcamFeed from '../components/WebcamFeed';
 
 export default function Home() {
-  return <CameraFeed />;
+  return <WebcamFeed />;
 }
