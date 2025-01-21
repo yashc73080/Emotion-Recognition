@@ -3,7 +3,7 @@
 # Export the current date and time for job labeling
 export DATE=$(date +%Y%m%d_%H%M%S)
 export LABEL="emotion_recognition"
-export JOB_NAME=train_CNN_"$LABEL"_"$DATE"
+export JOB_NAME="test"
 
 # Environment variables to optimize performance
 export OMP_NUM_THREADS=4 
@@ -19,8 +19,8 @@ mkdir -p /scratch/${USER}/data/emotion_recognition
 sbatch <<EOT
 #!/bin/bash
 #SBATCH -J $JOB_NAME
-#SBATCH -o /scratch/${USER}/logs/emotion_recognition/$JOB_NAME.%j.o
-#SBATCH -e /scratch/${USER}/logs/emotion_recognition/$JOB_NAME.%j.e
+#SBATCH -o /home/yc1376/Emotion-Recognition/backend/model/$JOB_NAME.%j.o
+#SBATCH -e /home/yc1376/Emotion-Recognition/backend/model/$JOB_NAME.%j.e
 #SBATCH --requeue
 #SBATCH --partition=gpu
 #SBATCH --gres=gpu:1
@@ -29,8 +29,8 @@ sbatch <<EOT
 #SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=08:00:00
-#SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
-#SBATCH --mail-type=ALL
+##SBATCH --mail-user=yc1376@scarletmail.rutgers.edu
+##SBATCH --mail-type=ALL
 
 module purge
 module use /projects/community/modulefiles
@@ -40,7 +40,6 @@ set -x
 
 cd $HOME/Emotion-Recognition/backend/model/
 
-conda init bash
 eval "$(conda shell.bash hook)"
 conda activate emotion
 

@@ -7,7 +7,6 @@ import torch.nn.functional as F
 import torch.utils.data
 from torch.utils.tensorboard import SummaryWriter
 from torch.autograd import Variable
-from tqdm import tqdm
 import time
 
 sys.path.append(os.path.abspath(os.path.join('..')))
@@ -85,33 +84,8 @@ class EmotionRecognitionCNN(nn.Module):
 
                 if batch_idx % 100 == 0:
                     batch_size = len(X_train)
-                    print(f'Epoch: {epoch+1} [{batch_idx*batch_size}/{len(train_loader.dataset)} ({100.*batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tAccuracy: {100. * correct / (batch_size * (batch_idx+1)):.2f}%')
+                    print(f'Epoch: {epoch+1} [{batch_idx*batch_size}/{len(train_loader.dataset)} ({100.*batch_idx / len(train_loader):.0f}%)]\tLoss: {loss.item():.6f}\tAccuracy: {100. * correct / (batch_size * (batch_idx+1)):.2f}%', flush=True)
             
-            epoch_loss /= len(train_loader)
-            epoch_accuracy = 100. * correct / total
-            writer.add_scalar('Loss/train', epoch_loss, epoch)
-            writer.add_scalar('Accuracy/train', epoch_accuracy, epoch)
-
-            # Validation
-            self.eval()
-            val_loss, val_correct, val_total = 0.0, 0, 0
-            with torch.no_grad():
-                for X_val, y_val in val_loader:
-                    X_val, y_val = X_val.to(device), y_val.to(device)
-                    output = self.forward(X_val)
-                    loss = criterion(output, y_val)
-                    val_loss += loss.item()
-                    _, predicted = output.max(1)
-                    val_correct += predicted.eq(y_val).sum().item()
-                    val_total += y_val.size(0)
-            
-            val_loss /= len(val_loader)
-            val_accuracy = 100. * val_correct / val_total
-            writer.add_scalar('Loss/val', val_loss, epoch)
-            writer.add_scalar('Accuracy/val', val_accuracy, epoch)
-
-            print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.2f}%, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%')
-
             # Step the scheduler
             scheduler.step(val_loss)
 
@@ -121,35 +95,38 @@ class EmotionRecognitionCNN(nn.Module):
         self.eval()
         correct = 0
         with torch.no_grad():
-            for X_test, y_test in test_loader:
-                X_test, y_test = X_test.to(device), y_test.to(device)
-                output = self.forward(X_test)
-                correct += (output.argmax(1) == y_test).sum().item()
-        print(f"Test Accuracy: {100 * correct / len(test_loader.dataset):.2f}%")
+            for test_imgs, test_labels in test_loader:
+                test_imgs, test_labels = test_imgs.to(device), test_labels.to(device)
+                output = self.forward(test_imgs)
+                predicted = torch.max(output, 1)[1]
+                correct += (predicted == test_labels).sum().item()
+        
+        print(f'Test accuracy: {100. * correct / len(test_loader.dataset):.2f}%', flush=True)
+
 
 def main():
     start_time = time.time()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(f'Using device: {device}')
+    print(f'Using device: {device}', flush=True)
 
     data_dir = os.path.join('..', '..', 'dataset')
     batch_size = 40
     train_loader, val_loader, test_loader = prepare_data(data_dir, batch_size=batch_size)
 
-    print('Number of training images:', len(train_loader.dataset))
-    print('Number of test images:', len(test_loader.dataset))
-    print('Number of validation images:', len(val_loader.dataset))
+    print('Number of training images:', len(train_loader.dataset), flush=True)
+    print('Number of test images:', len(test_loader.dataset), flush=True)
 
-    model = EmotionRecognitionCNN(use_batch_norm=True).to(device)
-    model.train_model(train_loader, val_loader, lr=0.0005, num_epochs=40, device=device)
-    print('Train time:', time.time() - start_time)
+    model = EmotionRecognitionCNN().to(device)
+    model.train_model(train_loader, lr=0.001, num_epochs=15, device=device)
+    print('Train time:', time.time() - start_time, flush=True)
 
     model.test_model(test_loader, device=device)
 
     torch.save(model.state_dict(), "emotion_recognition_cnn_1.pth")
 
     print('Total Execution time:', time.time() - start_time)
+
 
 if __name__ == '__main__':
     main()

@@ -3,3 +3,9 @@ __pycache__/
 *.ipynb
 *.zip
 runs/
+*.zip
+temp_dir/
+*.tar
+*.out
+*.e
+*.o
