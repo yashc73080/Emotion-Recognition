@@ -283,15 +283,32 @@ class EmotionRecognitionCNN(nn.Module):
 
     def train_model(self, train_loader, val_loader, lr=0.1, epochs=30, device='cpu', weight_decay=1e-4):
         self.to(device)
-        # Compute class weights from training sampler or counts
-        class_counts = torch.tensor([sum(1 for _, y in train_loader.dataset.samples if y == i)
-                                     for i in range(self.model.fc.out_features)], dtype=torch.float)
+        
+        # Fix for accessing class counts when using a Subset
+        if hasattr(train_loader.dataset, 'dataset'):
+            # When train_loader.dataset is a Subset
+            # Get original dataset
+            original_dataset = train_loader.dataset.dataset
+            indices = train_loader.dataset.indices
+            
+            # Count classes using the original dataset and subset indices
+            class_counts = torch.zeros(self.model.fc.out_features)
+            for idx in indices:
+                _, label = original_dataset[idx]
+                class_counts[label] += 1
+        else:
+            # Direct access if not a Subset
+            class_counts = torch.tensor([sum(1 for _, y in train_loader.dataset.samples if y == i)
+                                    for i in range(self.model.fc.out_features)], dtype=torch.float)
+        
+        # Calculate weights
         class_weights = (1.0 / (class_counts / class_counts.sum())).to(device)
 
+        # Rest of your existing training code
         criterion = FocalLoss(gamma=2.0, weight=class_weights)
         optimizer = SGD(self.parameters(), lr=lr, momentum=0.9, weight_decay=weight_decay)
         scheduler = OneCycleLR(optimizer, max_lr=lr,
-                               steps_per_epoch=len(train_loader), epochs=epochs)
+                            steps_per_epoch=len(train_loader), epochs=epochs)
 
         writer = SummaryWriter()
         best_val_acc = 0.0
