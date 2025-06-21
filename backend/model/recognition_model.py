@@ -251,7 +251,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 
 # Ensure prepare_data import
-sys.path.append(os.path.abspath(os.path.join(__file__, '..')))
+sys.path.append(os.path.abspath(os.path.join('..')))
+
 from prepare_data import prepare_data
 
 class FocalLoss(nn.Module):
@@ -373,7 +374,9 @@ def main():
 
     data_dir = os.path.join('..', '..', 'dataset')
     batch_size = 64
-    train_loader, val_loader, test_loader, classes = prepare_data(data_dir, batch_size)
+    train_loader, val_loader, test_loader = prepare_data(data_dir, batch_size)
+
+    classes = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
 
     model = EmotionRecognitionCNN(num_classes=len(classes), pretrained=True)
     model.train_model(train_loader, val_loader, lr=0.1, epochs=30, device=device)
