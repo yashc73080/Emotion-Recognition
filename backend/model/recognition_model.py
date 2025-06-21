@@ -1,12 +1,10 @@
 import os
 import sys
-import numpy as np
 import torch 
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.data
+from sklearn.metrics import classification_report
 from torch.utils.tensorboard import SummaryWriter
-from torch.autograd import Variable
 import time
 
 sys.path.append(os.path.abspath(os.path.join('..')))
@@ -58,7 +56,7 @@ class EmotionRecognitionCNN(nn.Module):
         return x
     
     def train_model(self, train_loader, val_loader, lr=0.001, num_epochs=5, device='cpu', weight_decay=1e-4):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.0005)
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.1)
         criterion = nn.CrossEntropyLoss()
         self.train()
@@ -116,17 +114,35 @@ class EmotionRecognitionCNN(nn.Module):
 
         writer.close()
 
-    def test_model(self, test_loader, device='cpu'):
+    def test_model(self, test_loader, device='cpu', class_names=None):
         self.eval()
+        all_preds = []
+        all_labels = []
         correct = 0
+        
         with torch.no_grad():
             for test_imgs, test_labels in test_loader:
                 test_imgs, test_labels = test_imgs.to(device), test_labels.to(device)
                 output = self.forward(test_imgs)
                 predicted = torch.max(output, 1)[1]
                 correct += (predicted == test_labels).sum().item()
+                
+                # Store predictions and labels for metrics
+                all_preds.extend(predicted.cpu().numpy())
+                all_labels.extend(test_labels.cpu().numpy())
         
-        print(f'Test accuracy: {100. * correct / len(test_loader.dataset):.2f}%', flush=True)
+        accuracy = 100. * correct / len(test_loader.dataset)
+        print(f'Test accuracy: {accuracy:.2f}%', flush=True)
+        
+        # Calculate and display metrics
+        if class_names is None:
+            class_names = [str(i) for i in range(7)]  # Default names if not provided
+            
+        # Print classification report (includes precision, recall, f1-score)
+        print("\nClassification Report:")
+        print(classification_report(all_labels, all_preds, target_names=class_names))
+
+        return accuracy, all_preds, all_labels
 
 
 def main():
@@ -139,15 +155,17 @@ def main():
     batch_size = 40
     train_loader, val_loader, test_loader = prepare_data(data_dir, batch_size=batch_size)
 
+    class_names = ['Angry', 'Disgust', 'Fear', 'Happy', 'Neutral', 'Sad', 'Surprise']
+
     print('Number of training images:', len(train_loader.dataset), flush=True)
     print('Number of test images:', len(test_loader.dataset), flush=True)
     print('Number of validation images:', len(val_loader.dataset), flush=True)
 
     model = EmotionRecognitionCNN().to(device)
-    model.train_model(train_loader, val_loader, lr=0.001, num_epochs=15, device=device)
+    model.train_model(train_loader, val_loader, lr=0.001, num_epochs=25, device=device)
     print('Train time:', time.time() - start_time, flush=True)
 
-    model.test_model(test_loader, device=device)
+    model.test_model(test_loader, device=device, class_names=class_names)
 
     torch.save(model.state_dict(), "emotion_recognition_cnn_1.pth")
 

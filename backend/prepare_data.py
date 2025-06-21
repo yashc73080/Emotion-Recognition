@@ -9,7 +9,8 @@ def prepare_data(data_dir, batch_size=32, val_split=0.2):
         transforms.RandomHorizontalFlip(),
         transforms.RandomRotation(10),
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))
+        transforms.Normalize((0.5,), (0.5,)),
+        transforms.ColorJitter(brightness=0.2, contrast=0.2),
     ])
 
     train_data = datasets.ImageFolder(os.path.join(data_dir, 'train'), transform=transform)
