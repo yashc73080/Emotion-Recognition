@@ -32,7 +32,7 @@ class EmotionRecognitionCNN(nn.Module):
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
         
         # Dropout
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.3)
 
         # Global Average Pooling and Fully Connected Layer
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))
@@ -40,28 +40,62 @@ class EmotionRecognitionCNN(nn.Module):
         self.fc2 = nn.Linear(64, num_classes)
 
     def forward(self, x):
-        x = self.pool(F.relu(self.norm1(self.conv1(x))))
-        x = self.pool(F.relu(self.norm2(self.conv2(x))))
-        x = self.pool(F.relu(self.norm3(self.conv3(x))))
-        x = self.pool(F.relu(self.norm4(self.conv4(x))))
-
+        # First block
+        identity = x
+        x = self.conv1(x)
+        x = self.norm1(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        
+        # Second block with residual connection
+        identity2 = x
+        x = self.conv2(x)
+        x = self.norm2(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        
+        # Third block with residual connection
+        identity3 = x
+        x = self.conv3(x)
+        x = self.norm3(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        
+        # Fourth block
+        x = self.conv4(x)
+        x = self.norm4(x)
+        x = F.relu(x)
+        x = self.pool(x)
+        
         # Global Average Pooling
         x = self.global_avg_pool(x)
-        x = x.view(x.size(0), -1)  # Flatten for the fully connected layer
-
+        x = x.view(x.size(0), -1)  # Flatten
+        
         x = self.dropout(x)
         x = self.fc1(x)
         x = self.fc2(x)
-
+        
         return x
     
     def train_model(self, train_loader, val_loader, lr=0.001, num_epochs=5, device='cpu', weight_decay=1e-4):
-        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', patience=3, factor=0.1)
-        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='max', patience=3, factor=0.5, verbose=True)
+        
+        # Calculate class weights
+        class_counts = torch.tensor([958, 111, 1024, 1774, 1233, 1247, 831])  # From your classification report
+        class_weights = 1.0 / (class_counts / class_counts.sum())
+        class_weights = class_weights / class_weights.sum() * len(class_weights)
+        class_weights = class_weights.to(device)
+        
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
         self.train()
 
         writer = SummaryWriter()
+        
+        # Initialize early stopping variables
+        best_val_acc = 0
+        patience = 5
+        counter = 0
 
         for epoch in range(num_epochs):
             epoch_loss, correct, total = 0.0, 0, 0
@@ -106,6 +140,19 @@ class EmotionRecognitionCNN(nn.Module):
             val_accuracy = 100. * val_correct / val_total
             writer.add_scalar('Loss/val', val_loss, epoch)
             writer.add_scalar('Accuracy/val', val_accuracy, epoch)
+            
+            # Early stopping check
+            if val_accuracy > best_val_acc:
+                best_val_acc = val_accuracy
+                counter = 0
+                # Save best model
+                torch.save(self.state_dict(), "best_emotion_model.pth")
+                print(f"New best model saved with validation accuracy: {val_accuracy:.2f}%")
+            else:
+                counter += 1
+                if counter >= patience:
+                    print(f"Early stopping triggered after {epoch+1} epochs")
+                    break
 
             print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_accuracy:.2f}%, Val Loss: {val_loss:.4f}, Val Accuracy: {val_accuracy:.2f}%')
             
