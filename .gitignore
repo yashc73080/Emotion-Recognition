@@ -9,3 +9,4 @@ temp_dir/
 *.out
 *.e
 *.o
+*.pth
