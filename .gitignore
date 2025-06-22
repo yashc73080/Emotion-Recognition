@@ -10,3 +10,4 @@ temp_dir/
 *.e
 *.o
 *.pth
+.vscode/*
