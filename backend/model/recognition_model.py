@@ -268,10 +268,10 @@ class FocalLoss(nn.Module):
         return focal.mean()
 
 class EmotionRecognitionCNN(nn.Module):
-    def __init__(self, num_classes=7):
+    def __init__(self, num_classes=7, pretrained=True):
         super(EmotionRecognitionCNN, self).__init__()
         # Load pretrained ResNet18
-        backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
+        backbone = models.resnet18(pretrained=pretrained)
         # Adapt first conv layer for grayscale input
         backbone.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
         # Replace final fc
