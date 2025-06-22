@@ -17,11 +17,19 @@ def prepare_data(data_dir, batch_size=32, val_split=0.2):
     train_data = datasets.ImageFolder(os.path.join(data_dir, 'train'), transform=transform)
     test_data = datasets.ImageFolder(os.path.join(data_dir, 'test'), transform=transform)
 
-    # Calculate class weights for balanced sampling
-    targets = [label for _, label in train_data.samples]
-    class_counts = np.bincount(targets)
+    # Split train_data into train and validation sets first
+    val_size = int(len(train_data) * val_split)
+    train_size = len(train_data) - val_size
+    train_data, val_data = random_split(train_data, [train_size, val_size])
+
+    # Calculate class weights for balanced sampling - only for the training subset
+    # Get indices from the subset
+    train_indices = train_data.indices
+    # Get original labels
+    original_targets = [train_data.dataset.targets[i] for i in train_indices]
+    class_counts = np.bincount(original_targets)
     class_weights = 1. / class_counts
-    sample_weights = class_weights[targets]
+    sample_weights = class_weights[original_targets]
     
     # Create weighted sampler for the training set
     sampler = WeightedRandomSampler(
@@ -29,11 +37,6 @@ def prepare_data(data_dir, batch_size=32, val_split=0.2):
         num_samples=len(sample_weights),
         replacement=True
     )
-
-    # Split train_data into train and validation sets
-    val_size = int(len(train_data) * val_split)
-    train_size = len(train_data) - val_size
-    train_data, val_data = random_split(train_data, [train_size, val_size])
 
     # Use the sampler for training data
     train_loader = DataLoader(train_data, batch_size=batch_size, sampler=sampler, pin_memory=True)
